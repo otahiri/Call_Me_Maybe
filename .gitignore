@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+data.zip
+en.subject.pdf
+llm_sdk.zip
+
+data:
+input
