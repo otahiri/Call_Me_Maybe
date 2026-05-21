@@ -1,11 +1,12 @@
+all: run
 install:
 	uv sync
 
 run:
-	uv run python3 main.py
+	uv run python3 -m src
 
 debug: 
-	uv run python3 -m pdb main.py
+	uv run python3 -m pdb src/main.py
 
 clean: 
 	rm -rf __pycache__ .mypy_cache
