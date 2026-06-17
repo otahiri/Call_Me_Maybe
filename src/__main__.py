@@ -113,8 +113,8 @@ try:
         print()
         for p in prompts:
             prompt = (
-                "You are a strict data extraction script. Your ONLY job is to identify the core action or function requested in the user's input and output the function name in snake_case followed immediately by a space and the word \"end\".\n"
-                "the allowed functions are:\n"
+                    "You are a strict data extraction script. Your ONLY job is to identify the core action or function requested in the user's input and output the function name in snake_case followed immediately by a space and the word \"end\".\n"
+                    "the allowed functions are:\n"
                     f"{[(func['name'], func['description']) for func in funcs.functions]}\n"
                     f"each function name is paired with its description\n"
                     "EXAMPLES:\n"
@@ -123,6 +123,7 @@ try:
                     "question: add 2 and 9\n"
                     "answer: fn_add_numbers\n"
                     f"question: {p}\n"
+                    "answer"
                     )
             encoded = model.encode(prompt)
             out = ""
@@ -135,13 +136,13 @@ try:
             for _ in range(100):
                 if out:
                     functions = [f for f in functions
-                                 if f.startswith(out.strip())]
+                                 if f.startswith(out)]
                 if len(functions) == 1:
                     out = functions[0]
                     break
-                if len(functions) == 0:
-                    print("i guess it got fucked up somewhere")
-                    break
+                # if len(functions) == 0:
+                #     print("i guess it got fucked up somewhere")
+                #     break
                 logits = model.model.get_logits_from_input_ids(
                         encoded.squeeze(0).tolist()
                         )
