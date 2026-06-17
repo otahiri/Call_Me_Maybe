@@ -1,3 +1,4 @@
+from os import replace
 from re import L
 import sys
 
@@ -148,6 +149,9 @@ try:
                 new_id = int(np.argmax(logits))
                 text = model.decode([int(new_id)])
                 out += text
+                if " end" in out:
+                    out = out.replace(" end", "")
+                    break
                 new_id_tensor = torch.tensor([[new_id]],
                                              device=model.model._device)
                 encoded = torch.cat((encoded, new_id_tensor), dim=1)
