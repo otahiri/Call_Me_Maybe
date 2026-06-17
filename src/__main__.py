@@ -128,10 +128,14 @@ try:
             functions = [f['name'] for f in funcs.functions]
             allowed_token = []
             for name in functions:
-                allowed_token.append(model.encode(name))
+                allowed_token.extend(model.encode(name).flatten().tolist())
+            allowed_token.extend(model.encode(" end\n").flatten().tolist())
+            allowed_token = list(set(allowed_token))
             for _ in range(100):
+                if out:
+                    functions = [f for f in functions if f.startswith(out.strip())]
                 if len(functions) == 1:
-                    print(functions[0])
+                    out = functions[0]
                     break
                 logits = model.model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
                 mask = np.full_like(logits, -np.inf)
@@ -141,7 +145,6 @@ try:
                 new_id = int(np.argmax(logits))
                 text = model.decode([int(new_id)])
                 out += text
-                functions = [f for f in functions if f.startswith(out)]
                 new_id_tensor = torch.tensor([[new_id]], device=model.model._device)
                 encoded = torch.cat((encoded, new_id_tensor), dim=1)
             print(out)
