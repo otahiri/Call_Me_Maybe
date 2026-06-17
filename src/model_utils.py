@@ -62,7 +62,7 @@ class ModelInterface:
             tokens = tokens.flatten().tolist()
         out = ""
         for t in tokens:
-            out += self.translation.get(tokens, "")
+            out += self.translation.get(t, "")
         for key, value in self.special_chars.items():
             out = out.replace(value, key)
         return out

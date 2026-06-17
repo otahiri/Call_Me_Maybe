@@ -126,13 +126,22 @@ try:
             encoded = model.encode(prompt)
             out = ""
             for _ in range(100):
-
+                functions = []
+                for f in funcs.functions:
+                    if f['name'].start_with(out):
+                        functions.append(f['name'])
+                if len(functions) == 1:
+                    print(functions[0])
+                    break
+                allowed_token = [model.vocab['fn']]
                 logits = model.model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
+                mask = np.full_like(logits, -np.inf)
+                for token in allowed_token:
+                    mask[token] = logits[token]
+                logits = mask
                 new_id = int(np.argmax(logits))
                 text = model.decode([int(new_id)])
                 out += text
-                if " end" in out:
-                    break
                 new_id_tensor = torch.tensor([[new_id]], device=model.model._device)
                 encoded = torch.cat((encoded, new_id_tensor), dim=1)
             print(out)
