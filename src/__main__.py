@@ -112,24 +112,24 @@ try:
         print()
         for p in prompts:
             prompt = (
-                "You are a strict data extraction script. Your ONLY job is to identify the core action or function requested in the user's input and output the function name in snake_case followed immediately by a space and the word \"end\"."
-                "the allowed functions are:"
-                    f"{[(func['name'], func['description']) for func in funcs.functions]}"
-                    f"each function name is paired with its description"
-                    "EXAMPLES:"
-                    "question: greet jake"
-                    "answer: fn_greet end"
-                    "question: add 2 and 9"
-                    "answer: fn_add_numbers"
-                    f"question: {p}"
+                "You are a strict data extraction script. Your ONLY job is to identify the core action or function requested in the user's input and output the function name in snake_case followed immediately by a space and the word \"end\".\n"
+                "the allowed functions are:\n"
+                    f"{[(func['name'], func['description']) for func in funcs.functions]}\n"
+                    f"each function name is paired with its description\n"
+                    "EXAMPLES:\n"
+                    "question: greet jake\n"
+                    "answer: fn_greet end\n"
+                    "question: add 2 and 9\n"
+                    "answer: fn_add_numbers\n"
+                    f"question: {p}\n"
                     )
             encoded = model.encode(prompt)
             out = ""
             for _ in range(100):
 
                 logits = model.model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
-                new_id = np.argmax(np.array(logits[0, -1, :]))
-                text = model.decode(torch.tensor(new_id).tolist())
+                new_id = np.argmax(np.array(logits)[0, -1, :])
+                text = model.decode([int(new_id)])
                 out += text
                 if " end" in out:
                     break

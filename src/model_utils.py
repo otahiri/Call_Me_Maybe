@@ -25,7 +25,8 @@ class ModelInterface:
                 merge_str = "".join([p1, p2])
                 if (p1 in self.vocab and p2 in self.vocab
                         and merge_str in self.vocab):
-                    self.merge[(p1, p2)] = (self.vocab[merge_str], rank)
+                    id1, id2 = self.vocab[p1], self.vocab[p2]
+                    self.merge[(id1, id2)] = (self.vocab[merge_str], rank)
         self.translation: dict = {v: k for k, v in self.vocab.items()}
 
     def encode(self, prompt: str) -> torch.Tensor:
@@ -48,15 +49,20 @@ class ModelInterface:
                         pair_to_merge = p
             if not pair_to_merge:
                 break
-            for i in range(len(tokens) - 1):
+            i = 0
+            while i < len(tokens) - 1:
                 if (tokens[i], tokens[i + 1]) == pair_to_merge:
                     tokens[i:i + 2] = [merge_id]
+                else:
+                    i += 1
         return torch.tensor([tokens], device=self.model._device, dtype=torch.long)
 
     def decode(self, tokens: torch.Tensor | list[int]) -> str:
         if isinstance(tokens, torch.Tensor):
-            tokens = tokens.tolist()
-        out = self.translation.get(tokens, "")
+            tokens = tokens.flatten().tolist()
+        out = ""
+        for t in tokens:
+            out += self.translation.get(tokens, "")
         for key, value in self.special_chars.items():
             out = out.replace(value, key)
         return out
