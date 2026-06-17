@@ -128,7 +128,7 @@ try:
             for _ in range(100):
 
                 logits = model.model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
-                new_id = np.argmax(np.array(logits)[0, -1, :])
+                new_id = int(np.argmax(logits))
                 text = model.decode([int(new_id)])
                 out += text
                 if " end" in out:
