@@ -128,10 +128,10 @@ try:
             for _ in range(100):
 
                 logits = model.model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
-                new_id = np.argmax(np.array(logits))
+                new_id = np.argmax(np.array(logits[0, -1, :]))
                 text = model.decode(torch.tensor(new_id).tolist())
                 out += text
-                if "end" in out:
+                if " end" in out:
                     break
                 new_id_tensor = torch.tensor([[new_id]], device=model.model._device)
                 encoded = torch.cat((encoded, new_id_tensor), dim=1)
