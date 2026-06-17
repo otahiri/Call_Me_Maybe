@@ -1,5 +1,6 @@
 from llm_sdk import Small_LLM_Model
 import json
+import torch
 
 
 class ModelInterface:
@@ -27,7 +28,7 @@ class ModelInterface:
                     self.merge[(p1, p2)] = (self.vocab[merge_str], rank)
         self.translation: dict = {v: k for k, v in self.vocab.items()}
 
-    def encode(self, prompt: str) -> list:
+    def encode(self, prompt: str) -> torch.Tensor:
         for key, value in self.special_chars.items():
             prompt = prompt.replace(key, value)
         tokens = [self.vocab.get(c, 0) for c in prompt]
@@ -50,12 +51,12 @@ class ModelInterface:
             for i in range(len(tokens) - 1):
                 if (tokens[i], tokens[i + 1]) == pair_to_merge:
                     tokens[i:i + 2] = [merge_id]
-        return tokens
+        return torch.tensor([tokens], device=self.model._device, dtype=torch.long)
 
-    def decode(self, tokens: list) -> str:
-        out = ""
-        for t in tokens:
-            out += self.translation.get(t, "")
+    def decode(self, tokens: torch.Tensor | list[int]) -> str:
+        if isinstance(tokens, torch.Tensor):
+            tokens = tokens.tolist()
+        out = self.translation.get(tokens, "")
         for key, value in self.special_chars.items():
             out = out.replace(value, key)
         return out
