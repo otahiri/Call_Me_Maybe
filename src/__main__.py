@@ -139,6 +139,9 @@ try:
                 if len(functions) == 1:
                     out = functions[0]
                     break
+                if len(functions) == 0:
+                    print("i guess it got fucked up somewhere")
+                    break
                 logits = model.model.get_logits_from_input_ids(
                         encoded.squeeze(0).tolist()
                         )
