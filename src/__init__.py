@@ -1,3 +1,4 @@
-from .parsing import functions
+from .parsing import RawInputs
+from .model_utils import ModelInterface
 
-__all__ = ["functions"]
+__all__ = ["RawInputs", "ModelInterface"]

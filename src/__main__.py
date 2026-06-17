@@ -1,18 +1,18 @@
 import sys
 
+from pydantic import EncoderProtocol
+
 try:
     from typing import Any
     import argparse
 
     import pydantic
-    from src import functions
+    from src import RawInputs, ModelInterface
 
-    from llm_sdk import Small_LLM_Model
     import json
     import numpy as np
     import re
 
-    # model = Small_LLM_Model()
     # def test(prompt: str):
     #     prompt = (
     #             "You are a strict data extraction script. Your ONLY job is to identify the core action or function requested in the user's input and output the function name in snake_case followed immediately by a space and the word \"end\"."
@@ -69,10 +69,8 @@ try:
     #   "type": "number"
     # }
 
-
-    def main():
+    def main() -> None:
         prompts = []
-        vocab: Any
         data: Any
         funcs: Any
         parser = argparse.ArgumentParser()
@@ -92,26 +90,33 @@ try:
         # with open(model.get_path_to_vocab_file(), "r") as f:
         #     vocab = json.load(f)
         args = parser.parse_args()
-        with open(args.input, "r") as file:
-            data = json.load(file)
         with open(args.functions_definition, "r") as f:
             funcs = json.load(f)
 
-        for line in data:
-            for key, value in line.items():
-                if key == "prompt":
-                    prompts.append(value)
-        funcs = functions(functions=funcs)
-        print([f.keys() for f in funcs.functions])
+        with open(args.input, "r") as file:
+            data = json.load(file)
+            for line in data:
+                for key, value in line.items():
+                    if key == "prompt":
+                        prompts.append(value)
+                    else:
+                        raise ValueError(
+                                "error prompts should be {prompt: prompt}"
+                                )
+
+        funcs = RawInputs(functions=funcs, prompts=prompts)
+        model = ModelInterface()
+        enco = model.encode("hello my name is oussama")
+        print(enco, model.decode(enco))
 
     if __name__ == "__main__":
         try:
             main()
         except pydantic.ValidationError as e:
-            print(e.errors()[0]["msg"])
+            print(e.errors()[0]["msg"], file=sys.stderr)
         except (IsADirectoryError, FileNotFoundError, PermissionError):
-            print("invalid file")
+            print("invalid file", file=sys.stderr)
         except json.decoder.JSONDecodeError:
-            print("invalid json file")
+            print("invalid json file", file=sys.stderr)
 except KeyboardInterrupt:
-    print("user force stopped the program")
+    print("user force stopped the program", file=sys.stderr)

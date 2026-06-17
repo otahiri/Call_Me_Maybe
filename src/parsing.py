@@ -1,8 +1,9 @@
 from pydantic import BaseModel, model_validator
 
 
-class functions(BaseModel):
+class RawInputs(BaseModel):
     functions: list[dict]
+    prompts: list[str]
 
     @model_validator(mode="after")
     def validate_funcs(self):
@@ -23,7 +24,6 @@ class functions(BaseModel):
                     raise ValueError("invalid type detected")
             try:
                 return_type = f["returns"]["type"]
-                print(return_type)
             except KeyError:
                 raise ValueError("return field missing")
             if return_type not in valid_types:
