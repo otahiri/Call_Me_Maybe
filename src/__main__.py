@@ -126,7 +126,9 @@ try:
             encoded = model.encode(prompt)
             out = ""
             functions = [f['name'] for f in funcs.functions]
-            allowed_token = model.encode("".join(functions))
+            allowed_token = []
+            for name in functions:
+                allowed_token.append(model.encode(name))
             for _ in range(100):
                 if len(functions) == 1:
                     print(functions[0])
@@ -139,6 +141,7 @@ try:
                 new_id = int(np.argmax(logits))
                 text = model.decode([int(new_id)])
                 out += text
+                functions = [f for f in functions if f.startswith(out)]
                 new_id_tensor = torch.tensor([[new_id]], device=model.model._device)
                 encoded = torch.cat((encoded, new_id_tensor), dim=1)
             print(out)
