@@ -133,25 +133,25 @@ try:
             allowed_token = list(set(allowed_token))
             for _ in range(100):
                 if out:
-                    functions = [f for f in functions if f.startswith(out.strip())]
+                    functions = [f for f in functions
+                                 if f.startswith(out.strip())]
                 if len(functions) == 1:
                     out = functions[0]
                     break
-                logits = model.model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
+                logits = model.model.get_logits_from_input_ids(
+                        encoded.squeeze(0).tolist()
+                        )
                 mask = np.full_like(logits, -np.inf)
                 for token in allowed_token:
                     mask[token] = logits[token]
                 logits = mask
                 new_id = int(np.argmax(logits))
-                if new_id in allowed_token:
-                    allowed_token.remove(new_id)
                 text = model.decode([int(new_id)])
                 out += text
-                new_id_tensor = torch.tensor([[new_id]], device=model.model._device)
+                new_id_tensor = torch.tensor([[new_id]],
+                                             device=model.model._device)
                 encoded = torch.cat((encoded, new_id_tensor), dim=1)
             print(out)
-
-
 
     if __name__ == "__main__":
         try:
