@@ -125,15 +125,12 @@ try:
                     )
             encoded = model.encode(prompt)
             out = ""
+            functions = [f['name'] for f in funcs.functions]
+            allowed_token = model.encode("".join(functions))
             for _ in range(100):
-                functions = []
-                for f in funcs.functions:
-                    if f['name'].start_with(out):
-                        functions.append(f['name'])
                 if len(functions) == 1:
                     print(functions[0])
                     break
-                allowed_token = [model.vocab['fn']]
                 logits = model.model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
                 mask = np.full_like(logits, -np.inf)
                 for token in allowed_token:
