@@ -143,6 +143,8 @@ try:
                     mask[token] = logits[token]
                 logits = mask
                 new_id = int(np.argmax(logits))
+                if new_id in allowed_token:
+                    allowed_token.remove(new_id)
                 text = model.decode([int(new_id)])
                 out += text
                 new_id_tensor = torch.tensor([[new_id]], device=model.model._device)
