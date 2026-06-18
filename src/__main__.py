@@ -1,5 +1,7 @@
 import sys
+import gc
 
+from numpy import mod
 
 try:
     from typing import Any
@@ -10,66 +12,11 @@ try:
 
     import json
     import numpy as np
-    import torch
-
-    # def test(prompt: str):
-    #     prompt = (
-    #             "You are a strict data extraction script. Your ONLY job is to identify the core action or function requested in the user's input and output the function name in snake_case followed immediately by a space and the word \"end\"."
-    #             ""
-    #             "RULES:"
-    #             "1. Output exactly the function name and the word \"end\"."
-    #             "2. Do NOT output any other text, no explanations, no punctuation, no \"Sure\", and no greetings."
-    #             "3. If the action is unclear, output: unknown_action end"
-    #             ""
-    #             "EXAMPLES:"
-    #             "Input: \"can you turn off the living room lights for me?\""
-    #             "Output: turn_off_lights end"
-    #             ""
-    #             "Input: \"what's the weather like in Tokyo right now?\""
-    #             "Output: get_weather end"
-    #             ""
-    #             "Input: \"create a new file called test.txt\""
-    #             "Output: create_file end"
-    #             ""
-    #             "Input: \"fetch me the user details for ID 45\""
-    #             "Output: get_user_details end"
-    #             ""
-    #             f"Input: \"{prompt}\""
-    #             "Output:"
-    # )
-    #     encoded = model.encode(prompt)
-    #
-    #     max_token = 200
-    #     answer = ""
-    #
-    #     for _ in range(max_token):
-    #         logits = model.get_logits_from_input_ids(encoded.squeeze(0).tolist())
-    #         new_id = np.argmax(np.array(logits))
-    #         token_text = model.decode(torch.tensor(new_id))
-    #         answer += token_text
-    #         print(token_text, end='')
-    #         if "end" in answer:
-    #             break
-    #         new_id_tensor = torch.tensor([[new_id]], device=encoded.device)
-    #         encoded = torch.cat((encoded, new_id_tensor), dim=1)
-    #     print()
-
-    # "name": "fn_add_numbers",
-    # "description": "Add two numbers together and return their sum.",
-    # "parameters": {
-    #   "a": {
-    #     "type": "number"
-    #   },
-    #   "b": {
-    #     "type": "number"
-    #   }
-    # },
-    # "returns": {
-    #   "type": "number"
-    # }
 
     def main() -> None:
         prompts = []
+        model = ModelInterface()
+        model.set_module("base")
         data: Any
         funcs: Any
         parser = argparse.ArgumentParser()
@@ -86,8 +33,6 @@ try:
         parser.add_argument(
                 "--output", type=str, default="data/output/function_calls.json"
                 )
-        # with open(model.get_path_to_vocab_file(), "r") as f:
-        #     vocab = json.load(f)
         args = parser.parse_args()
         with open(args.functions_definition, "r") as func_file:
             funcs = json.load(func_file)
@@ -105,8 +50,10 @@ try:
 
         raw_funcs = RawInputs(functions=funcs, prompts=prompts)
         funcs = []
-        model = ModelInterface()
         for p in prompts:
+            func_list = [
+                    (f['name'], f['description']) for f in raw_funcs.functions
+                    ]
             prompt = (
                     "You are a strict data extraction script."
                     " Your ONLY job is to identify the core action or function"
@@ -114,7 +61,7 @@ try:
                     "function name in snake_case followed immediately"
                     " by a space and the word \"end\".\n"
                     "the allowed functions are:\n"
-                    f"{[(func['name'], func['description']) for func in raw_funcs.functions]}\n"
+                    f"{func_list}\n"
                     f"each function name is paired with its description\n"
                     "EXAMPLES:\n"
                     "question: greet jake\n"
@@ -129,8 +76,8 @@ try:
             functions = [f['name'] for f in raw_funcs.functions]
             allowed_token = []
             for name in functions:
-                allowed_token.extend(model.encode(name).flatten().tolist())
-            allowed_token.extend(model.encode(" end\n").flatten().tolist())
+                allowed_token.extend(model.encode(name))
+            allowed_token.extend(model.encode(" end\n"))
             allowed_token = list(set(allowed_token))
             for _ in range(100):
                 if out:
@@ -139,11 +86,18 @@ try:
                 if len(functions) == 1:
                     print('here')
                     out = out.strip()
-                    funcs.append(Func(name=out, description=next((f['description'] for f in raw_funcs.functions if f['name'] == out), "invlaid function"), prompt=p))
+                    funcs.append(
+                            Func(name=out,
+                                 description=next(
+                                     (f['description']
+                                      for f in raw_funcs.functions
+                                      if f['name'] == out),
+                                     "invlaid function"
+                                     ),
+                                 prompt=p)
+                            )
                     break
-                logits = model.model.get_logits_from_input_ids(
-                        encoded.squeeze(0).tolist()
-                        )
+                logits = model.model.get_logits_from_input_ids(encoded)
                 mask = np.full_like(logits, -np.inf)
                 for token in allowed_token:
                     mask[token] = logits[token]
@@ -153,14 +107,63 @@ try:
                 out += text
                 if " end" in out:
                     out = out.replace(" end", "").strip()
-                    funcs.append(Func(name=out, description=next((f['description'] for f in raw_funcs.functions if f['name'] == out), "invlaid function"), prompt=p))
+                    funcs.append(Func(name=out,
+                                      description=next(
+                                          (f['description']
+                                           for f in raw_funcs.functions
+                                           if f['name'] == out),
+                                          "invlaid function"),
+                                      prompt=p))
                     break
-                new_id_tensor = torch.tensor([[new_id]],
-                                             device=model.model._device)
-                encoded = torch.cat((encoded, new_id_tensor), dim=1)
+                encoded.append(new_id)
             print(out)
+        model.del_model()
+        gc.collect()
+        model.set_module("coder")
         for f in funcs:
-            print(f)
+            correct_func = next((func for func in raw_funcs.functions if func['name'] == f.name))
+            params = correct_func.get('parameters', {})
+            out = "{"
+            prompt = (
+                "You are a strict data extraction script.\n"
+                "Your ONLY job is to extract the parameters for a function from a prompt that will be provided, followed immediately by \" end\".\n\n"
+                "you will not do anything with those parameters just provide the parameters followed immediately by \" end\n\""
+                "EXAMPLES:\n"
+                "name: fn_add_numbers\n"
+                "description: Add two numbers together and return their sum.\n"
+                "expected parameters: {'a': {'type': 'number'}, 'b': {'type': 'number'}}\n"
+                "prompt: What is the sum of 8 and 7?\n"
+                "extracted parameters: {\"a\": 8, \"b\": 7} end\n\n"
+                "name: fn_substitute_string_with_regex\n"
+                "description: Replace all occurrences matching a regex pattern in a string.\n"
+                "expected parameters:\"source_string\": \"string\" , \"regex\": \"string\", \"replacement\":  \"string\"\n"
+                "prompt: replace all M H Y and A with dash in this sentence \"Hello There, MY NAme is ME\"\n"
+                "extracted parameters: {source_string: \"Hello There, MY NAme is ME\", regex: [MHYA], replacement: \"-\" } end\n"
+                "name: fn_substitute_string_with_regex\n"
+                "description: Replace all occurrences matching a regex pattern in a string.\n"
+                "expected parameters:\"source_string\": \"string\" , \"regex\": \"string\", \"replacement\":  \"string\"\n"
+                "prompt: replace all numbers with 0 in this sentence\"hello i have 3298 formats for all my friend i need 324 more\"\n"
+                "extracted parameters: {source_string: \"hello i have 3298 formats for all my friend i need 324 more\", regex: [0-9], replacement: \"0\" } end\n"
+                f"name: {f.name}\n"
+                f"description: {f.description}\n"
+                f"expected parameters: {params}\n"
+                f"prompt: {f.prompt}\n"
+                "extracted parameters: {"
+            )
+
+            encoded = model.encode(prompt)
+            for _ in range(200):
+                logits = model.model.get_logits_from_input_ids(encoded)
+                new_id = int(np.argmax(logits))
+                out += model.decode([new_id])
+                encoded.append(new_id)
+
+                if "end" in out:
+                    print(out)
+                    break
+        model.del_model()
+        del model
+        gc.collect()
 
     if __name__ == "__main__":
         try:
@@ -173,3 +176,4 @@ try:
             print("invalid json file", file=sys.stderr)
 except KeyboardInterrupt:
     print("user force stopped the program", file=sys.stderr)
+

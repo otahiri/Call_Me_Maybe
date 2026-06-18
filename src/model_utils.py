@@ -1,13 +1,15 @@
+from numpy.matrixlib.defmatrix import N
+
 from llm_sdk import Small_LLM_Model
 import json
-import torch
 
 
 class ModelInterface:
     def __init__(self) -> None:
         self.vocab: dict = dict()
         self.merge: dict = dict()
-        self.model: Small_LLM_Model = Small_LLM_Model()
+        self.model: Small_LLM_Model
+        self.set_module("base")
         self.special_chars: dict = {" ": "Ġ", "\n": "Ċ", "\t": "ĉ"}
 
         with open(self.model.get_path_to_vocab_file(), "r") as f:
@@ -29,7 +31,7 @@ class ModelInterface:
                     self.merge[(id1, id2)] = (self.vocab[merge_str], rank)
         self.translation: dict = {v: k for k, v in self.vocab.items()}
 
-    def encode(self, prompt: str) -> torch.Tensor:
+    def encode(self, prompt: str) -> list[int]:
         for key, value in self.special_chars.items():
             prompt = prompt.replace(key, value)
         tokens = [self.vocab.get(c, 0) for c in prompt]
@@ -55,14 +57,24 @@ class ModelInterface:
                     tokens[i:i + 2] = [merge_id]
                 else:
                     i += 1
-        return torch.tensor([tokens], device=self.model._device, dtype=torch.long)
+        return tokens
 
-    def decode(self, tokens: torch.Tensor | list[int]) -> str:
-        if isinstance(tokens, torch.Tensor):
-            tokens = tokens.flatten().tolist()
+    def decode(self, tokens:  list[int]) -> str:
         out = ""
         for t in tokens:
             out += self.translation.get(t, "")
         for key, value in self.special_chars.items():
             out = out.replace(value, key)
         return out
+
+    def set_module(self, module_sign: str) -> None:
+        if module_sign == "base":
+            self.model = Small_LLM_Model()
+        elif module_sign == "coder":
+            self.model = Small_LLM_Model(
+                    model_name="Qwen/Qwen2.5-Coder-0.5B"
+                    )
+
+    def del_model(self) -> None:
+        del self.model
+

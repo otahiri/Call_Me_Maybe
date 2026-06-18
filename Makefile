@@ -1,5 +1,6 @@
 UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache"
 UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env"
+HF_HOME="/home/otahiri-/goinfre/hg_cache"
 
 
 all: run
