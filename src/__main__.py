@@ -1,8 +1,6 @@
 from os import replace
-from re import L
 import sys
 
-from numpy import mod
 from pydantic import EncoderProtocol
 
 try:
@@ -10,11 +8,10 @@ try:
     import argparse
 
     import pydantic
-    from src import RawInputs, ModelInterface
+    from src import RawInputs, ModelInterface, Func, Param
 
     import json
     import numpy as np
-    import re
     import torch
 
     # def test(prompt: str):
@@ -94,8 +91,8 @@ try:
         # with open(model.get_path_to_vocab_file(), "r") as f:
         #     vocab = json.load(f)
         args = parser.parse_args()
-        with open(args.functions_definition, "r") as f:
-            funcs = json.load(f)
+        with open(args.functions_definition, "r") as func_file:
+            funcs = json.load(func_file)
 
         with open(args.input, "r") as file:
             data = json.load(file)
@@ -108,14 +105,23 @@ try:
                                 "error prompts should be {prompt: prompt}"
                                 )
 
-        funcs = RawInputs(functions=funcs, prompts=prompts)
+        raw_funcs = RawInputs(functions=funcs, prompts=prompts)
+        funcs = [Func(name=f['name'], description=f['description'],
+                      params={k: Param(param_type=v['type'])
+                      for k, v in f['parameters'].items()})
+                 for f in raw_funcs.functions]
+        for f in funcs:
+            print(f)
         model = ModelInterface()
-        print()
         for p in prompts:
             prompt = (
-                    "You are a strict data extraction script. Your ONLY job is to identify the core action or function requested in the user's input and output the function name in snake_case followed immediately by a space and the word \"end\".\n"
+                    "You are a strict data extraction script."
+                    " Your ONLY job is to identify the core action or function"
+                    " requested in the user's input and output the "
+                    "function name in snake_case followed immediately"
+                    " by a space and the word \"end\".\n"
                     "the allowed functions are:\n"
-                    f"{[(func['name'], func['description']) for func in funcs.functions]}\n"
+                    f"{[(f.name, f.description) for f in funcs]}\n"
                     f"each function name is paired with its description\n"
                     "EXAMPLES:\n"
                     "question: greet jake\n"
@@ -127,7 +133,7 @@ try:
                     )
             encoded = model.encode(prompt)
             out = ""
-            functions = [f['name'] for f in funcs.functions]
+            functions = [f.name for f in funcs]
             allowed_token = []
             for name in functions:
                 allowed_token.extend(model.encode(name).flatten().tolist())
