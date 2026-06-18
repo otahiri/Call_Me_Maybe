@@ -1,12 +1,16 @@
-from pydantic import BaseModel, Field
-from typing import Literal, Dict
-
-
-class Param(BaseModel):
-    param_type: Literal["string", "number", "integer"]
+from pydantic import BaseModel, Field, model_validator
+from typing import Dict
 
 
 class Func(BaseModel):
     name: str = Field(min_length=1)
-    description: str
-    params: Dict[str, Param]
+    description: str = ""
+    prompt: str = Field(min_length=1)
+    params: Dict[str, str] = dict()
+
+    @model_validator(mode='after')
+    def validate_func(self) -> "Func":
+        for p in self.params.values():
+            if p not in ["string", "number", "integer"]:
+                raise ValueError("invalid type detected")
+        return self

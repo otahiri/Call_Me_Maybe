@@ -1,14 +1,12 @@
-from os import replace
 import sys
 
-from pydantic import EncoderProtocol
 
 try:
     from typing import Any
     import argparse
 
     import pydantic
-    from src import RawInputs, ModelInterface, Func, Param
+    from src import RawInputs, ModelInterface, Func
 
     import json
     import numpy as np
@@ -106,12 +104,7 @@ try:
                                 )
 
         raw_funcs = RawInputs(functions=funcs, prompts=prompts)
-        funcs = [Func(name=f['name'], description=f['description'],
-                      params={k: Param(param_type=v['type'])
-                      for k, v in f['parameters'].items()})
-                 for f in raw_funcs.functions]
-        for f in funcs:
-            print(f)
+        funcs = []
         model = ModelInterface()
         for p in prompts:
             prompt = (
@@ -121,7 +114,7 @@ try:
                     "function name in snake_case followed immediately"
                     " by a space and the word \"end\".\n"
                     "the allowed functions are:\n"
-                    f"{[(f.name, f.description) for f in funcs]}\n"
+                    f"{[(func['name'], func['description']) for func in raw_funcs.functions]}\n"
                     f"each function name is paired with its description\n"
                     "EXAMPLES:\n"
                     "question: greet jake\n"
@@ -133,7 +126,7 @@ try:
                     )
             encoded = model.encode(prompt)
             out = ""
-            functions = [f.name for f in funcs]
+            functions = [f['name'] for f in raw_funcs.functions]
             allowed_token = []
             for name in functions:
                 allowed_token.extend(model.encode(name).flatten().tolist())
@@ -144,11 +137,10 @@ try:
                     functions = [f for f in functions
                                  if f.startswith(out)]
                 if len(functions) == 1:
-                    out = functions[0]
+                    print('here')
+                    out = out.strip()
+                    funcs.append(Func(name=out, description=next((f['description'] for f in raw_funcs.functions if f['name'] == out), "invlaid function"), prompt=p))
                     break
-                # if len(functions) == 0:
-                #     print("i guess it got fucked up somewhere")
-                #     break
                 logits = model.model.get_logits_from_input_ids(
                         encoded.squeeze(0).tolist()
                         )
@@ -160,12 +152,15 @@ try:
                 text = model.decode([int(new_id)])
                 out += text
                 if " end" in out:
-                    out = out.replace(" end", "")
+                    out = out.replace(" end", "").strip()
+                    funcs.append(Func(name=out, description=next((f['description'] for f in raw_funcs.functions if f['name'] == out), "invlaid function"), prompt=p))
                     break
                 new_id_tensor = torch.tensor([[new_id]],
                                              device=model.model._device)
                 encoded = torch.cat((encoded, new_id_tensor), dim=1)
             print(out)
+        for f in funcs:
+            print(f)
 
     if __name__ == "__main__":
         try:
