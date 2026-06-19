@@ -1,5 +1,3 @@
-from numpy.matrixlib.defmatrix import N
-
 from llm_sdk import Small_LLM_Model
 import json
 
@@ -12,6 +10,8 @@ class ModelInterface:
         self.set_module("base")
         self.special_chars: dict = {" ": "Ġ", "\n": "Ċ", "\t": "ĉ"}
 
+        print(self.model.get_path_to_vocab_file())
+        print(self.model.get_path_to_tokenizer_file())
         with open(self.model.get_path_to_vocab_file(), "r") as f:
             self.vocab = dict(json.load(f))
         # with open(self.model.get_path_to_tokenizer_file, 'r') as f:
