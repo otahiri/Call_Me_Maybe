@@ -1,8 +1,6 @@
 import sys
 import gc
 
-from numpy import extract
-
 try:
     from typing import Any
     import argparse
@@ -114,9 +112,7 @@ try:
                                  )
                     break
                 encoded.append(new_id)
-            print(out)
         model.del_model()
-        gc.collect()
         model.set_module("coder")
 
         example_prompt = model.encode(
@@ -147,8 +143,6 @@ try:
                 f"prompt: {f.prompt}\n"
 
                 )
-            f.params = {}
-
             base_encoded = example_prompt + model.encode(prompt)
             for param in func_lookup[f.name]["parameters"]:
 
@@ -161,7 +155,6 @@ try:
                     new_id = int(np.argmax(logits))
                     out += model.decode([new_id])
                     current_encoded.append(new_id)
-                    print(out)
                     if '"' in out:
                         print(out)
                         break
