@@ -55,10 +55,10 @@ try:
         func_list = [(f['name'], f['description'])
                      for f in raw_funcs.functions]
         example_prompt = model.encode(
-                    "You are a strict data extraction script."
-                    " Your ONLY job is to identify the core action or function"
-                    " requested in the user's input and output the "
-                    "function name in snake_case followed immediately"
+                    "You are a strict data extraction script.\n"
+                    " Your ONLY job is to identify the core action or function\n"
+                    " requested in the user's input and output the \n"
+                    "function name in snake_case followed immediately\n"
                     " by a space and the word \"end\".\n"
                     f"{func_list}\n"
                     f"each function name is paired with its description\n"
@@ -75,7 +75,6 @@ try:
         allowed_token.extend(model.encode(" end\n"))
         allowed_token = list(set(allowed_token))
         func_lookup = {f['name']: f for f in raw_funcs.functions}
-        print("start")
         for p in prompts:
             prompt = (
                     f"question: {p}\n"
@@ -121,43 +120,32 @@ try:
         model.set_module("coder")
 
         example_prompt = model.encode(
-            "CRITICAL: DO NOT generate code, DO NOT solve math problems, DO NOT apply regex rules\n"
-            "if a prompt says replace x with y the replacement is y not the modified text, stick to the rules and do not apply your own logic\n"
-            "You are a strict data extraction script. DO NOT solve the problems.\n"
-            "do not edit the values from the prompt do not do anything to them\n"
-            "you do NOT solve anything do NOT change anything just extract the parameters exactly as mentioned in the prompt\n"
-            "Your ONLY job is to extract the exact value for the requested parameter from the prompt nothing more\n"
-            "You must output ONLY the value, the exact value, surrounded by double quotes.\n\n"
-            "EXAMPLES:\n"
-            "name: fn_add_numbers\n"
-            "prompt: What is the sum of 8 and 7?\n"
-            "extracted parameter \"a\": \"8\"\n\n"
-            "name: fn_add_numbers\n"
-            "prompt: What is the sum of 8 and 7?\n"
-            "extracted parameter \"b\": \"7\"\n\n"
-            "name: fn_substitute_string_with_regex\n"
-            "prompt: replace all M H Y and A with dash in this sentence \"Hello There MY NAme is ME\"\n"
-            "extracted parameter \"source_string\": \"Hello There MY NAme is ME\"\n\n"
-            "name: fn_substitute_string_with_regex\n"
-            "prompt: replace all M H Y and A with dash in this sentence \"Hello There MY NAme is ME\"\n"
-            "extracted parameter \"regex\": \"[MHYA]\"\n\n"
-            "name: fn_substitute_string_with_regex\n"
-            "prompt: replace all M H Y and A with dash in this sentence \"Hello There MY NAme is ME\"\n"
-            "extracted parameter \"replacement\": \"-\"\n\n"
-            "name: fn_substitute_string_with_regex\n"
-            "prompt: replace all numbers with asterisks in 'hello my name is me and i432m happy892 to be 234 years'\n"
-            "extracted parameter \"source_string\": \"hello my name is me and i432m happy892 to be 234 years\"\n\n"
-            "name: fn_substitute_string_with_regex\n"
-            "prompt: replace all numbers with asterisks in 'hello my name is me and i432m happy892 to be 234 years'\n"
-            "extracted parameter \"regex\": \"[0-9]\"\n\n"
-            "name: fn_substitute_string_with_regex\n"
-            "prompt: replace all numbers with asterisks in 'hello my name is me and i432m happy892 to be 234 years'\n"
-            "extracted parameter \"replacement\": \"*\"\n\n"
-        )
+                "You are a strict data extraction script. DO NOT solve the problems.\n"
+                "you are really good at making regex when asked for them\n"
+                "Your only job is to extract the parameters for a function from a prompt\n"
+                "DO NOT do anything with those parameters do not do any equation with them or use them for anything or do anything to them\n"
+                "only give me the parameters surrounded by \"\n"
+                "EXAMPLES:\n\n"
+                "function name: fn_add_numbers\n"
+                'expected parameters: "a": "number", "b": number\n'
+                "prompt: add 2 and 3\n"
+                'parameters: "a": "2", "b": "3"\n\n'
+                "function name: fn_get_square_root\n"
+                'expected parameters: "a": "number"\n'
+                "prompt: what is the square root of 400\n"
+                'parameters: "a": "400"\n\n'
+                "function name: fn_substitute_string_with_regex\n"
+                'expected parameters: "source_string": "string", "regex": "string" ,"replacement": "string"\n'
+                'prompt: replace all digits in this string "hello 32 i am 432 years old i love the  number 32" with asterisk\n'
+                'parameters: "source_string": "hello 32 i am 432 years old i love the  number 32", "regex": "[0-9]+" ,"replacement": "*"\n'
+                )
         for f in funcs:
+            expected_param = " ,".join([f'"{k}": "{v["type"]}"' for k, v in func_lookup[f.name]['parameters'].items()])
             prompt = (
-                f"name: {f.name}\n"
+                f"function name: {f.name}\n"
+                f"expected parameters: {expected_param}"
                 f"prompt: {f.prompt}\n"
+
                 )
             f.params = {}
 
