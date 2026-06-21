@@ -10,11 +10,8 @@ class ModelInterface:
         self.set_module("base")
         self.special_chars: dict = {" ": "Ġ", "\n": "Ċ", "\t": "ĉ"}
 
-        print(self.model.get_path_to_vocab_file())
-        print(self.model.get_path_to_tokenizer_file())
         with open(self.model.get_path_to_vocab_file(), "r") as f:
             self.vocab = dict(json.load(f))
-        # with open(self.model.get_path_to_tokenizer_file, 'r') as f:
         with open(self.model.get_path_to_merges_file(), "r") as f:
             lines = f.read().splitlines()
             for rank, line in enumerate(lines):
@@ -72,7 +69,7 @@ class ModelInterface:
             self.model = Small_LLM_Model()
         elif module_sign == "coder":
             self.model = Small_LLM_Model(
-                    model_name="Qwen/Qwen2.5-Coder-0.5B"
+                    model_name="Qwen/Qwen2.5-0.5B-Instruct"
                     )
 
     def del_model(self) -> None:

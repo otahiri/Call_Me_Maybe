@@ -116,38 +116,45 @@ try:
         model.set_module("coder")
 
         example_prompt = model.encode(
-                "You are a strict data extraction script. DO NOT solve the problems.\n"
-                "you are really good at making regex when asked for them\n"
-                "Your only job is to extract the parameters for a function from a prompt\n"
-                "DO NOT do anything with those parameters do not do any equation with them or use them for anything or do anything to them\n"
-                "only give me the parameters surrounded by \"\n"
+                "You are strictly a parameter extraction script. You ONLY know how to extract parameters from prompts.\n"
+                "CAUTION:\n"
+                'YOU ARE NOT to answer ANY question in the prompts. YOU ARE NOT to SOLVE ANY math problems. YOU ARE TO ONLY EXTRACT the appropriate parameters from the prompt surrounded by " that is it\n'
                 "EXAMPLES:\n\n"
                 "function name: fn_add_numbers\n"
-                'expected parameters: "a": "number", "b": number\n'
+                "description: Add two numbers together and return their sum."
+                'expected parameters: "a": "number", "b": "number"\n'
                 "prompt: add 2 and 3\n"
                 'parameters: "a": "2", "b": "3"\n\n'
                 "function name: fn_get_square_root\n"
+                "description: Calculate the square root of a number."
                 'expected parameters: "a": "number"\n'
                 "prompt: what is the square root of 400\n"
                 'parameters: "a": "400"\n\n'
-                "function name: fn_substitute_string_with_regex\n"
-                'expected parameters: "source_string": "string", "regex": "string" ,"replacement": "string"\n'
-                'prompt: replace all digits in this string "hello 32 i am 432 years old i love the  number 32" with asterisk\n'
-                'parameters: "source_string": "hello 32 i am 432 years old i love the  number 32", "regex": "[0-9]+" ,"replacement": "*"\n'
+                "name: fn_substitute_string_with_regex\n"
+                "description: Replace all occurrences matching a regex pattern in a string.\n"
+                'expected parameters:"source_string": "string" , "regex": "string", "replacement":  "string"\n'
+                'prompt: replace all M H Y and A with asterisks in this sentence "Hello There MY NAme is ME"\n'
+                'parameters: "source_string": "Hello There MY NAme is ME", "regex": "[MHYA]+", "replacement": "*"\n\n'
+                "name: fn_substitute_string_with_regex\n"
+                "description: Replace all occurrences matching a regex pattern in a string.\n"
+                'expected parameters:"source_string": "string" , "regex": "string", "replacement":  "string"\n'
+                'prompt: replace all numbers with 0 in this sentence "hello i have 3298 formats for all my friend i need 324 more"\n'
+                'parameters: "source_string": "hello i have 3298 formats for all my friend i need 324 more", "regex": "[0-9]+", "replacement": "0"\n'
                 )
         for f in funcs:
             expected_param = " ,".join([f'"{k}": "{v["type"]}"' for k, v in func_lookup[f.name]['parameters'].items()])
             prompt = (
                 f"function name: {f.name}\n"
+                f"description:{ f.description}\n"
                 f"expected parameters: {expected_param}"
                 f"prompt: {f.prompt}\n"
-
+                "parameters: "
                 )
             base_encoded = example_prompt + model.encode(prompt)
             for param in func_lookup[f.name]["parameters"]:
 
                 current_encoded = list(base_encoded)
-                prefix_prompt = f'extracted parameters "{param}": "'
+                prefix_prompt = f'"{param}": "'
                 current_encoded.extend(model.encode(prefix_prompt))
                 out = ""
                 for _ in range(200):
@@ -155,8 +162,8 @@ try:
                     new_id = int(np.argmax(logits))
                     out += model.decode([new_id])
                     current_encoded.append(new_id)
+                    print(out)
                     if '"' in out:
-                        print(out)
                         break
 
                 clean_val = out[:out.find('"')]
