@@ -56,6 +56,8 @@ try:
                 '"answer": "fn_add_numbers"\n'
                 'prompt: replace all number in this sentence "hello my name is me and 31 i 213 am 65 89 years old" with "-"\n'
                 '"answer": "fn_substitute_string_with_regex"\n'
+                "prompt: calculate the square root of 64\n"
+                '"answer": "fn_get_square_root"\n'
                     )
 
         allowed_token = []
@@ -67,7 +69,7 @@ try:
         for p in prompts:
             func = ""
             functions = func_list
-            encoded = func_prompt + model.encode(f'prompt: {p}\n' '"answer": "')
+            encoded = func_prompt + model.encode(f'prompt: {p}\n' + '"answer": "')
             for _ in range(100):
                 print(func)
                 if func:
@@ -99,40 +101,52 @@ try:
                                  prompt=p
                                  )
                                  )
+                    encoded.extend(model.encode("\n"))
                     break
                 encoded.append(new_id)
         model.del_model()
         model.set_module("coder")
 
-        example_prompt = model.encode(
-                'extract the appropriate raw parameters surrouned by " from the provided prompt\n'
+        param_prompt = model.encode(
+                'function name: fn_add_numbers\n'
+                "description: Add two numbers together and return their sum."
+                'expected parameters: "a": "number", "b": "number"\n'
+                "prompt: add 9 and 5\n"
+                'parameters: "a": "9", "b": "5"\n\n'
+                "function name: fn_substitute_string_with_regex\n"
+                'description: Replace all occurrences matching a regex pattern in a string.\n'
+                'expected parameters: "source_string": "string", "regex": "string", "replacement": "string"\n'
+                'prompt: replace all a and b in this sentence "hello i am born to be here with you as a pawn" with z\n'
+                'parameters: "source_string": "hello i am born to be here with you as a pawn", "regex": "[ab]+", "replacement": "z"\n\n'
+                "function name: fn_substitute_string_with_regex\n"
+                'description: Replace all occurrences matching a regex pattern in a string.\n'
+                'expected parameters: "source_string": "string", "regex": "string", "replacement": "string"\n'
+                'prompt: subtitute every number with a dash in this sentence "hello 2 i0am happ7y to be 328here"\n'
+                'parameters: "source_string": "hello 2 i0am happ7y to be 328here", "regex": "\\d+", "replacement": "-"\n\n'
                 )
         for f in funcs:
             expected_param = " ,".join([f'"{k}": "{v["type"]}"' for k, v in func_lookup[f.name]['parameters'].items()])
             prompt = (
                 f"function name: {f.name}\n"
                 f"description:{ f.description}\n"
-                f"expected parameters: {expected_param}"
+                f"expected parameters: {expected_param}\n"
                 f"prompt: {f.prompt}\n"
-                "parameters: "
+                'parameters: '
                 )
-            base_encoded = example_prompt + model.encode(prompt)
+            encoded = param_prompt + model.encode(prompt)
             for param in func_lookup[f.name]["parameters"]:
-
-                current_encoded = list(base_encoded)
-                prefix_prompt = f'"{param}": "'
-                current_encoded.extend(model.encode(prefix_prompt))
-                out = ""
+                encoded.extend(model.encode(f'"{param}": "'))
+                param_val = ""
                 for _ in range(200):
-                    logits = model.model.get_logits_from_input_ids(current_encoded)
+                    logits = model.model.get_logits_from_input_ids(encoded)
                     new_id = int(np.argmax(logits))
-                    out += model.decode([new_id])
-                    current_encoded.append(new_id)
-                    print(out)
-                    if '"' in out:
+                    param_val += model.decode([new_id])
+                    encoded.append(new_id)
+                    print(param_val)
+                    if '"' in param_val:
                         break
 
-                clean_val = out[:out.find('"')]
+                clean_val = param_val[:param_val.find('"')]
                 f.params[param] = clean_val
                 print(f)
         model.del_model()
