@@ -1,18 +1,18 @@
-UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache"
-UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env"
-HF_HOME="/home/otahiri-/goinfre/hg_cache"
+export UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache"
+export UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env"
+export HF_HOME="/home/otahiri-/goinfre/hg_cache"
 
 
 all: run
 install:
 
-	@UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv sync
+	@HF_HOME="/home/otahiri-/goinfre/hg_cache" UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv sync
 
 run:
-	@UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run python3 -m src
+	@HF_HOME="/home/otahiri-/goinfre/hg_cache" UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run python3 -m src
 
 debug: 
-	@UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run python3 -m pdb src/main.py
+	@HF_HOME="/home/otahiri-/goinfre/hg_cache" UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run python3 -m pdb src/main.py
 
 clean: 
 	rm -rf __pycache__ .mypy_cache
