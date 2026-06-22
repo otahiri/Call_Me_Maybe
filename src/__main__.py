@@ -1,3 +1,5 @@
+from os import path
+from pathlib import Path
 import sys
 import gc
 
@@ -16,7 +18,7 @@ try:
         model = ModelInterface()
         model.set_module("base")
         data: Any
-        funcs: Any
+        func_def: Any
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--functions_definition",
@@ -33,7 +35,7 @@ try:
                 )
         args = parser.parse_args()
         with open(args.functions_definition, "r") as func_file:
-            funcs = json.load(func_file)
+            func_def = json.load(func_file)
 
         with open(args.input, "r") as file:
             data = json.load(file)
@@ -46,7 +48,7 @@ try:
                                 "error prompts should be {prompt: prompt}"
                                 )
 
-        raw_funcs = RawInputs(functions=funcs, prompts=prompts)
+        raw_funcs = RawInputs(functions=func_def, prompts=prompts)
         funcs = []
 
         func_list = [f['name'] for f in raw_funcs.functions]
@@ -116,11 +118,6 @@ try:
                 "function name: fn_substitute_string_with_regex\n"
                 'description: Replace all occurrences matching a regex pattern in a string.\n'
                 'expected parameters: "source_string": "string", "regex": "string", "replacement": "string"\n'
-                'prompt: replace all a and b in this sentence "hello i am born to be here with you as a pawn" with z\n'
-                'parameters: "source_string": "hello i am born to be here with you as a pawn", "regex": "[ab]+", "replacement": "z"\n\n'
-                "function name: fn_substitute_string_with_regex\n"
-                'description: Replace all occurrences matching a regex pattern in a string.\n'
-                'expected parameters: "source_string": "string", "regex": "string", "replacement": "string"\n'
                 'prompt: subtitute every number with a dash in this sentence "hello 2 i0am happ7y to be 328here"\n'
                 'parameters: "source_string": "hello 2 i0am happ7y to be 328here", "regex": "\\d+", "replacement": "-"\n\n'
                 )
@@ -147,11 +144,14 @@ try:
                         break
 
                 clean_val = param_val[:param_val.find('"')]
-                f.params[param] = clean_val
+                f.parameters[param] = clean_val
                 print(f)
         model.del_model()
         del model
         gc.collect()
+        mode = "w" if Path(args.output).exists() else "x"
+        with open(args.output, mode) as out_fp:
+            json.dump([f.model_dump() for f in funcs], out_fp, indent=2)
 
     if __name__ == "__main__":
         try:

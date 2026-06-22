@@ -69,9 +69,8 @@ class ModelInterface:
             self.model = Small_LLM_Model()
         elif module_sign == "coder":
             self.model = Small_LLM_Model(
-                    model_name="Qwen/Qwen2.5-0.5B-Instruct"
+                    model_name="Qwen/Qwen2.5-Coder-0.5B"
                     )
 
     def del_model(self) -> None:
         del self.model
-

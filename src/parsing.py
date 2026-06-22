@@ -8,7 +8,7 @@ class RawInputs(BaseModel):
     @model_validator(mode="after")
     def validate_funcs(self):
         valid_keys = ["name", "description", "parameters", "returns"]
-        valid_types = ["string", "number", "integer"]
+        valid_types = ["string", "number", "integer", "boolean"]
         for f in self.functions:
             if not len(f.keys()) == len(valid_keys):
                 raise ValueError

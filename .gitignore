@@ -222,3 +222,7 @@ en.subject.pdf
 llm_sdk.zip
 .python-version
 
+data
+moulinette
+pyproject.toml
+uv.lock
