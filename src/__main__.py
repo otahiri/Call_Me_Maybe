@@ -114,7 +114,12 @@ try:
                 "description: Add two numbers together and return their sum."
                 'expected parameters: "a": "number", "b": "number"\n'
                 "prompt: add 9 and 5\n"
-                'parameters: "a": "9", "b": "5"\n\n'
+                'parameters: "a": "9.0", "b": "5.0"\n\n'
+                'function name: fn_add_numbers\n'
+                "description: Add two numbers together and return their sum."
+                'expected parameters: "a": "integer", "b": "integer"\n'
+                "prompt: add 8 and 2\n"
+                'parameters: "a": "8", "b": "2"\n\n'
                 "function name: fn_substitute_string_with_regex\n"
                 'description: Replace all occurrences matching a regex pattern in a string.\n'
                 'expected parameters: "source_string": "string", "regex": "string", "replacement": "string"\n'
@@ -131,8 +136,8 @@ try:
                 'parameters: '
                 )
             encoded = param_prompt + model.encode(prompt)
-            for param in func_lookup[f.name]["parameters"]:
-                encoded.extend(model.encode(f'"{param}": "'))
+            for param_name, param_type in func_lookup[f.name]["parameters"].items():
+                encoded.extend(model.encode(f'"{param_name}": "'))
                 param_val = ""
                 for _ in range(200):
                     logits = model.model.get_logits_from_input_ids(encoded)
@@ -143,8 +148,16 @@ try:
                     if '"' in param_val:
                         break
 
-                clean_val = param_val[:param_val.find('"')]
-                f.parameters[param] = clean_val
+                clean_val: str | int | float = param_val[:param_val.find('"')]
+                param_type = param_type["type"]
+                print(param_type)
+                if param_type == "integer":
+                    clean_val = int(clean_val)
+                elif param_type == "number":
+                    clean_val = float(clean_val)
+                else:
+                    clean_val = clean_val
+                f.parameters[param_name] = clean_val
                 print(f)
         model.del_model()
         del model
