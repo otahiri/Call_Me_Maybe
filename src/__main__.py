@@ -159,7 +159,6 @@ try:
                     clean_val = clean_val
                 f.parameters[param_name] = clean_val
                 print(f)
-        model.del_model()
         del model
         gc.collect()
         mode = "w" if Path(args.output).exists() else "x"

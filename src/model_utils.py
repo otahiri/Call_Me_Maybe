@@ -1,15 +1,21 @@
 from llm_sdk import Small_LLM_Model
 import json
+from functools import lru_cache
+from pydantic import BaseModel, ConfigDict, model_validator
+from typing import Any
 
 
-class ModelInterface:
-    def __init__(self) -> None:
-        self.vocab: dict = dict()
-        self.merge: dict = dict()
-        self.model: Small_LLM_Model
-        self.set_module("base")
-        self.special_chars: dict = {" ": "Ġ", "\n": "Ċ", "\t": "ĉ"}
+class ModelInterface(BaseModel):
+    vocab: dict = dict()
+    merge: dict = dict()
+    model: Small_LLM_Model = None
+    special_chars: dict = {" ": "Ġ", "\n": "Ċ", "\t": "ĉ"}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    translation: dict = dict()
 
+    @model_validator(mode='after')
+    def make_stuff(self) -> Any:
+        self.set_module('base')
         with open(self.model.get_path_to_vocab_file(), "r") as f:
             self.vocab = dict(json.load(f))
         with open(self.model.get_path_to_merges_file(), "r") as f:
@@ -27,7 +33,9 @@ class ModelInterface:
                     id1, id2 = self.vocab[p1], self.vocab[p2]
                     self.merge[(id1, id2)] = (self.vocab[merge_str], rank)
         self.translation: dict = {v: k for k, v in self.vocab.items()}
+        return self
 
+    @lru_cache()
     def encode(self, prompt: str) -> list[int]:
         for key, value in self.special_chars.items():
             prompt = prompt.replace(key, value)
@@ -65,12 +73,10 @@ class ModelInterface:
         return out
 
     def set_module(self, module_sign: str) -> None:
+        del self.model
         if module_sign == "base":
             self.model = Small_LLM_Model()
         elif module_sign == "coder":
             self.model = Small_LLM_Model(
                     model_name="Qwen/Qwen2.5-Coder-0.5B"
                     )
-
-    def del_model(self) -> None:
-        del self.model
