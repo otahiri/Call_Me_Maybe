@@ -1,12 +1,31 @@
+"""
+parsing model for parsing function definition and prompts
+"""
+
 from pydantic import BaseModel, model_validator
+from typing import Any
 
 
 class RawInputs(BaseModel):
+    """parse raw inputs and store them into list
+
+    Attributes:
+        functions: function definitions
+        prompts: prompts to use for the ai
+    """
     functions: list[dict]
     prompts: list[str]
 
     @model_validator(mode="after")
-    def validate_funcs(self):
+    def validate_funcs(self) -> Any:
+        """validate input parsed
+
+        Returns:
+            return validated object
+
+        Raises:
+            ValueError: when an invlaid field is found
+        """
         valid_keys = ["name", "description", "parameters", "returns"]
         valid_types = ["string", "number", "integer", "boolean"]
         for f in self.functions:

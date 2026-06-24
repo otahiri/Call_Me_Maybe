@@ -1,20 +1,64 @@
+"""model utils"""
+
 from llm_sdk import Small_LLM_Model
 import json
 from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Any
 
 
+def set_module(module_sign: str) -> Small_LLM_Model:
+    """set the model to the chosen one
+
+    Args:
+        module_sign: the sign of the model
+
+    Returns:
+        return the model generated
+
+    Raises:
+        ValueError: raise a value error is the sign is not supported
+    """
+    match module_sign:
+        case "base":
+            return Small_LLM_Model()
+        case "coder":
+            return Small_LLM_Model(
+                    model_name="Qwen/Qwen2.5-Coder-0.5B"
+                    )
+        case _:
+            raise ValueError("invalid model sign")
+
+
 class ModelInterface(BaseModel):
+    """model interface to make it easier to talk to the mode
+
+    Attributes:
+        vocab: the vocab dictionary
+        merge: the merge list of all the valid merges
+        model: the model
+        special_chars: characters to replace to make the model
+        understand better
+        model_config: allow pydantic to accept custom types
+        Small_LLM_Model in this case
+        translation: vocab to reversed value: key for decoding
+    """
     vocab: dict = dict()
     merge: dict = dict()
-    model: Small_LLM_Model = None
+    model: Small_LLM_Model = set_module("base")
     special_chars: dict = {" ": "Ġ", "\n": "Ċ", "\t": "ĉ"}
     model_config = ConfigDict(arbitrary_types_allowed=True)
     translation: dict = dict()
 
     @model_validator(mode='after')
-    def make_stuff(self) -> Any:
-        self.set_module('base')
+    def initiate_utils(self) -> Any:
+        """initiate and validate values
+
+        Returns:
+            return the validated object
+
+        Raises:
+            ValueError: raised if an invalid file or invalid value detected
+        """
         try:
             with open(self.model.get_path_to_vocab_file(), "r") as f:
                 self.vocab = dict(json.load(f))
@@ -41,6 +85,15 @@ class ModelInterface(BaseModel):
         return self
 
     def encode(self, prompt: str) -> list[int]:
+        """convert prompt into numerical values and merge
+        the appropriate ids using byte_pair merge algo
+
+        Args:
+            prompt: prompt to feed the model
+
+        Returns:
+            list of the encoded values
+        """
         for key, value in self.special_chars.items():
             prompt = prompt.replace(key, value)
         tokens = [self.vocab.get(c, 0) for c in prompt]
@@ -69,17 +122,17 @@ class ModelInterface(BaseModel):
         return tokens
 
     def decode(self, tokens:  list[int]) -> str:
+        """convert tokens into a string
+
+        Args:
+            tokens: list of encoded values
+
+        Returns:
+            string generated from converting tokens
+        """
         out = ""
         for t in tokens:
             out += self.translation.get(t, "")
         for key, value in self.special_chars.items():
             out = out.replace(value, key)
         return out
-
-    def set_module(self, module_sign: str) -> None:
-        if module_sign == "base":
-            self.model = Small_LLM_Model()
-        elif module_sign == "coder":
-            self.model = Small_LLM_Model(
-                    model_name="Qwen/Qwen2.5-Coder-0.5B"
-                    )

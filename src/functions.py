@@ -1,8 +1,18 @@
+"""function model"""
+
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Union
 
 
 class Func(BaseModel):
+    """func class
+
+    Attributes:
+        name: name of the function
+        description: description about the function
+        prompt: prompt that will was provided to the model
+        parameters: the parameters dictionary
+    """
     name: str = Field(min_length=1)
     description: str = ""
     prompt: str = Field(min_length=1)
