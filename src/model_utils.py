@@ -1,6 +1,5 @@
 from llm_sdk import Small_LLM_Model
 import json
-from functools import lru_cache
 from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Any
 
@@ -16,26 +15,31 @@ class ModelInterface(BaseModel):
     @model_validator(mode='after')
     def make_stuff(self) -> Any:
         self.set_module('base')
-        with open(self.model.get_path_to_vocab_file(), "r") as f:
-            self.vocab = dict(json.load(f))
-        with open(self.model.get_path_to_merges_file(), "r") as f:
-            lines = f.read().splitlines()
-            for rank, line in enumerate(lines):
-                if not line or line.startswith("#"):
-                    continue
-                parts = line.split(" ")
-                if len(parts) != 2:
-                    raise ValueError("invalid merge file")
-                p1, p2 = parts
-                merge_str = "".join([p1, p2])
-                if (p1 in self.vocab and p2 in self.vocab
-                        and merge_str in self.vocab):
-                    id1, id2 = self.vocab[p1], self.vocab[p2]
-                    self.merge[(id1, id2)] = (self.vocab[merge_str], rank)
+        try:
+            with open(self.model.get_path_to_vocab_file(), "r") as f:
+                self.vocab = dict(json.load(f))
+        except (FileNotFoundError, IsADirectoryError, PermissionError):
+            raise ValueError("could not access vocab file")
+        try:
+            with open(self.model.get_path_to_merges_file(), "r") as f:
+                lines = f.read().splitlines()
+                for rank, line in enumerate(lines):
+                    if not line or line.startswith("#"):
+                        continue
+                    parts = line.split(" ")
+                    if len(parts) != 2:
+                        raise ValueError("invalid merge file")
+                    p1, p2 = parts
+                    merge_str = "".join([p1, p2])
+                    if (p1 in self.vocab and p2 in self.vocab
+                            and merge_str in self.vocab):
+                        id1, id2 = self.vocab[p1], self.vocab[p2]
+                        self.merge[(id1, id2)] = (self.vocab[merge_str], rank)
+        except (FileNotFoundError, IsADirectoryError, PermissionError):
+            raise ValueError("could not access merge file")
         self.translation: dict = {v: k for k, v in self.vocab.items()}
         return self
 
-    @lru_cache()
     def encode(self, prompt: str) -> list[int]:
         for key, value in self.special_chars.items():
             prompt = prompt.replace(key, value)
@@ -73,7 +77,6 @@ class ModelInterface(BaseModel):
         return out
 
     def set_module(self, module_sign: str) -> None:
-        del self.model
         if module_sign == "base":
             self.model = Small_LLM_Model()
         elif module_sign == "coder":

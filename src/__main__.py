@@ -1,4 +1,3 @@
-from os import path
 from pathlib import Path
 import sys
 import gc
@@ -13,7 +12,7 @@ try:
     import json
     import numpy as np
 
-    def main() -> None:
+    def run_model() -> None:
         prompts = []
         model = ModelInterface()
         model.set_module("base")
@@ -34,19 +33,31 @@ try:
                 "--output", type=str, default="data/output/function_calls.json"
                 )
         args = parser.parse_args()
-        with open(args.functions_definition, "r") as func_file:
-            func_def = json.load(func_file)
+        try:
+            with open(args.functions_definition, "r") as func_file:
+                func_def = json.load(func_file)
+        except (FileNotFoundError, IsADirectoryError, PermissionError):
+            raise ValueError("could not access the function definition file")
+        except json.decoder.JSONDecodeError:
+            raise ValueError("could not decode func def file")
 
-        with open(args.input, "r") as file:
-            data = json.load(file)
-            for line in data:
-                for key, value in line.items():
-                    if key == "prompt":
-                        prompts.append(value)
-                    else:
-                        raise ValueError(
-                                "error prompts should be {prompt: prompt}"
-                                )
+        try:
+            with open(args.input, "r") as file:
+                data = json.load(file)
+                for line in data:
+                    for key, value in line.items():
+                        if not value:
+                            raise ValueError("empty prompt detected")
+                        if key == "prompt":
+                            prompts.append(value)
+                        else:
+                            raise ValueError(
+                                    'error prompts should be \
+{"prompt": prompt text}')
+        except (FileNotFoundError, IsADirectoryError, PermissionError):
+            raise ValueError("could not acces prompt file")
+        except json.decoder.JSONDecodeError:
+            raise ValueError("could not decode prompt input file")
 
         raw_funcs = RawInputs(functions=func_def, prompts=prompts)
         funcs = []
@@ -56,7 +67,9 @@ try:
                 f"function list = [{' ,'.join(func_list)}]\n"
                 "prompt: add 2 and 3\n"
                 '"answer": "fn_add_numbers"\n'
-                'prompt: replace all number in this sentence "hello my name is me and 31 i 213 am 65 89 years old" with "-"\n'
+                'prompt: replace all number in this sentence '
+                '"hello my name is me and 31 i 213 am 65 89 years old" '
+                'with "-"\n'
                 '"answer": "fn_substitute_string_with_regex"\n'
                 "prompt: calculate the square root of 64\n"
                 '"answer": "fn_get_square_root"\n'
@@ -68,10 +81,11 @@ try:
         allowed_token.extend(model.encode(" end\n"))
         allowed_token = list(set(allowed_token))
         func_lookup = {f['name']: f for f in raw_funcs.functions}
-        for p in prompts:
+        for p in raw_funcs.prompts:
             func = ""
             functions = func_list
-            encoded = func_prompt + model.encode(f'prompt: {p}\n' + '"answer": "')
+            encoded = func_prompt + model.encode(
+                    f'prompt: {p}\n' + '"answer": "')
             for _ in range(100):
                 print(func)
                 if func:
@@ -106,7 +120,6 @@ try:
                     encoded.extend(model.encode("\n"))
                     break
                 encoded.append(new_id)
-        model.del_model()
         model.set_module("coder")
 
         param_prompt = model.encode(
@@ -121,13 +134,20 @@ try:
                 "prompt: add 8 and 2\n"
                 'parameters: "a": "8", "b": "2"\n\n'
                 "function name: fn_substitute_string_with_regex\n"
-                'description: Replace all occurrences matching a regex pattern in a string.\n'
-                'expected parameters: "source_string": "string", "regex": "string", "replacement": "string"\n'
-                'prompt: subtitute every number with a dash in this sentence "hello 2 i0am happ7y to be 328here"\n'
-                'parameters: "source_string": "hello 2 i0am happ7y to be 328here", "regex": "\\d+", "replacement": "-"\n\n'
+                'description: Replace all occurrences matching a regex '
+                'pattern in a string.\n'
+                'expected parameters: "source_string": "string", '
+                '"regex": "string", "replacement": "string"\n'
+                'prompt: subtitute every number with a dash in this'
+                'sentence "hello 2 i0am happ7y to be 328here"\n'
+                'parameters: "source_string": "hello 2 i0am happ7y'
+                ' to be 328here", "regex": "\\d+", "replacement": "-"\n\n'
                 )
         for f in funcs:
-            expected_param = " ,".join([f'"{k}": "{v["type"]}"' for k, v in func_lookup[f.name]['parameters'].items()])
+            expected_param = " ,".join(
+                    [f'"{k}": "{v["type"]}"'
+                     for k, v in func_lookup[f.name]['parameters'].items()]
+                    )
             prompt = (
                 f"function name: {f.name}\n"
                 f"description:{ f.description}\n"
@@ -136,8 +156,8 @@ try:
                 'parameters: '
                 )
             encoded = param_prompt + model.encode(prompt)
-            for param_name, param_type in func_lookup[f.name]["parameters"].items():
-                encoded.extend(model.encode(f'"{param_name}": "'))
+            for name, param_type in func_lookup[f.name]["parameters"].items():
+                encoded.extend(model.encode(f'"{name}": "'))
                 param_val = ""
                 for _ in range(200):
                     logits = model.model.get_logits_from_input_ids(encoded)
@@ -157,22 +177,22 @@ try:
                     clean_val = float(clean_val)
                 else:
                     clean_val = clean_val
-                f.parameters[param_name] = clean_val
+                f.parameters[name] = clean_val
                 print(f)
-        del model
         gc.collect()
         mode = "w" if Path(args.output).exists() else "x"
         with open(args.output, mode) as out_fp:
             json.dump([f.model_dump() for f in funcs], out_fp, indent=2)
 
-    if __name__ == "__main__":
+    def cli() -> None:
         try:
-            main()
+            run_model()
         except pydantic.ValidationError as e:
             print(e.errors()[0]["msg"], file=sys.stderr)
-        except (IsADirectoryError, FileNotFoundError, PermissionError):
-            print("invalid file", file=sys.stderr)
-        except json.decoder.JSONDecodeError:
-            print("invalid json file", file=sys.stderr)
+        except Exception as e:
+            print(e, file=sys.stderr)
+
+    if __name__ == "__main__":
+        cli()
 except KeyboardInterrupt:
     print("user force stopped the program", file=sys.stderr)
