@@ -2,21 +2,20 @@
 ARGS=
 all: run
 install:
-
-	@HF_HOME="/home/otahiri-/goinfre/hg_cache" UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv sync
+	uv sync
 
 run:
-	@HF_HOME="/home/otahiri-/goinfre/hg_cache" UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run python3 -m src $(ARGS)
+	uv run python3 -m src $(ARGS)
 
 debug: 
-	@HF_HOME="/home/otahiri-/goinfre/hg_cache" UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run python3 -m pdb src/main.py
+	uv run python3 -m pdb src/main.py
 
 clean: 
-	rm -rf __pycache__ .mypy_cache
+	rm -rf __pycache__ .mypy_cache tests/__pycache__  tests/.mypy_cache src/__pycache__  src/.mypy_cache
 
 lint: 
-	UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run flake8 src tests
-	UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+	uv run flake8 src tests
+	uv run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 test:
-	@HF_HOME="/home/otahiri-/goinfre/hg_cache" UV_CACHE_DIR="/home/otahiri-/goinfre/uv-cache" UV_PROJECT_ENVIRONMENT="/home/otahiri-/goinfre/call_me_maybe_env" uv run python3 -m tests
+	uv run python3 -m tests

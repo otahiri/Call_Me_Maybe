@@ -1,76 +1,152 @@
 # Call_Me_Maybe
-This project has been created as part of the 42 curriculum by otahiri-.
+*This project has been created as part of the 42 curriculum by otahiri-.*
 
 
-**DESCRIPTION:
-    a project about function calling.
-    usually when we ask an llm a question it will answers regardless of whether it know or not,
-    this was a huge issue back in the days, chatgpt would get the most basic mathmatical questions wrong,
-    to solve this issue a new technique was introduced function calling,
-    it is a way for the llm to cheat and use external tools to execute actions using pre-defined functions, this include but not limited any and all mathmatical questions, web scraping, scan a photo for text etc...
-    so the way it works is you give the ai a json file containing all the function definition, so when you ask it a question it determines the correct function.
-    then it extract the parameters from the prompt, this makes it able to answer complicated questions
+## Description
 
+Call_Me_Maybe is a function-calling project that turns natural language prompts into structured JSON function calls.
+Instead of answering the prompt directly, the program selects the best function from a provided catalog and extracts the
+arguments needed to call it.
 
-**INSTRUCTIONS:
-    to test lint run the command:
-            ```bash
-                make lint
-            ```
+The goal is to keep the output valid, structured, and predictable by using constrained decoding rather than free-form text generation.
 
-    to install the dependencies run the command:
-    ```bash
-        make install
-    ```
+## Instructions
 
-    to run the program run the command:
-    ```bash
-        make run
-    ```
+### Requirements
 
-    additionally you provide custome input files with certain flags:
-        to use your own functions definition file use the flag --functions_definition "path to function definition file" (by default it is data/input/functions_definition.json)
-        to use your own function test prompt file use the flag --input "path to function calling file" (by default is it data/input/function_calling_tests.json)
-        to use your own out put file use the flag --output "path to save output file" (by default it is data/output/function_calls.json)
-        Note: all flags are optional and if any flag is not provided the default value is used
+- Python 3.10+
+- `uv`
 
-    to run the program in debug mode run the command:
-        ```bash
-            make debug
-        ```
-    to run tests for the program run the command:
-    ```bash
-        make test
-    ```
+### Install
 
-    to remove cache files run the command:
-    ```bash
-        make clean
-    ```
+```bash
+make install
+```
 
-**Resources:
+### Run
 
-    [let's make chatgpt from scract](https://youtu.be/kCc8FmEb1nY?si=cGOiCjKdMzG8Jtot): one of the best way to start your ai journey and understand the hidden details of how llms works
-    [make gpt tokenizer](https://youtu.be/zduSFxRajkE?si=4bZ7imegGyblIfjl): the best guide and tutorial to make your own tokenizer
+```bash
+make run
+```
 
+By default, the program reads:
 
-**Algorithm explanation:
-    the way i approached constrained decoding in this project is by taking the logits given by the llm and using the function np.full_like, it can clone the list of logits, additionally you can give it the value to set in place of all values, i set it to negative infinity, then i set only the allowed tokens in the masked list to the value in the original logits list, and set the the logits to the masked logits, this makes the invalid values be irrelevant which makes the llm work more efficently,
+- `data/input/functions_definition.json`
+- `data/input/function_calling_tests.json`
 
+and writes:
 
-**Design decisions:
-    to make the usage of the model easier i made a class called ModelInterface, this has useful methods such as encode and decode which i impemented to make the concepts easier to understand,
-    set_model which set the model to the model value the specified version, by default it is the Qwen/Qwen3-0.6B but if you set it to code you get the Qwen/Qwen2.5-Coder-0.5B. those are the only supported models currently
+- `data/output/function_calls.json`
 
+### Custom paths
 
-**Performance analysis: 
-    since the llm takes longer when provided with a beefy prompt i chose to go with examples, so i give it a sample input and expected output, this give the llm simple to follow pattern, this made the llm way faster and more reliable,
-    additionally to make it follow the exact output format, i force it to follow my pattern so like name: " and wait for it to generate the closing quotes, this makes early exit easier and guarantees the output to be better than normal.
+```bash
+uv run python -m src \
+  --functions_definition [path to functions_definition.json] \
+  --input [path to input.json] \
+  --output [path to output.json]
+```
+ or using the make commands
+ ```bash
+  make ARGS=" --functions_definition [path to functions_definition.json]\
+  --input [path to input.json]\
+  --output [path to output.json]"
+ ```
 
+### Other useful commands
 
-**Challenges faced:
-    the main issue was how unreliable the base mode at extracting the parameters, to solve this i had to use another model for parameters extraction, this was the biggest improvment to the output.
+```bash
+make lint
+make test
+make debug
+```
 
+## Algorithm explanation
 
-**Testing strategy:
-    
+The solution uses a two-stage constrained decoding pipeline:
+
+1. **Function selection**: constrained decoding is used to mask valid tokens and set the rest to -inf,
+    each iteration the output is compared to the every element in list of function names, and the names that don't match the output or removed.
+    once there is a single element in the list that name is selected as the correct answer
+
+2. **Parameter extraction**: once the function is chosen, the program switches to the coder model and generates each
+   parameter value one field at a time. Numeric fields are restricted to digit-like tokens plust double quotes, while string fields are left
+   more open but still decoded in a controlled way.
+   the program keeps getting the next toeken until a double quote is generated to segnify the end of the parameter.
+
+This approach narrows the search space so the model stays close to the expected JSON structure instead of producing
+unconstrained text.
+
+## Design decisions
+
+- **Two model phases**: one phase for function routing and one phase for parameter extraction.
+- **Few-shot prompting**: example prompt/answer to help the model get into the function/parameters extracting mode.
+- **Token masking**: only valid tokens are considered during sensitive parts of decoding.
+- **Strict input validation**: function definitions and prompts are validated before generation starts.
+- **JSON output only**: results are serialized as JSON objects so downstream tools can consume them directly.
+
+## Performance analysis
+
+- **Accuracy**: constraining the token space improves consistency and reduces invalid function names or malformed values.
+- **Speed**: greedy decoding is simple and fast, but it still requires multiple forward passes per generated token.
+- **Reliability**: the more the output is constrained, the less likely the model is to drift away from the expected format.
+
+The main trade-off is that stronger constraints improve structure but can limit flexibility for ambiguous prompts.
+
+## Challenges faced
+
+- Formatting the prompt to guide the llm into the correct path.
+- Keeping function names valid while still allowing the model to pick the right one, without taking too long.
+- Handling different parameter types such as string, integer, and number.
+
+These issues were handled by combining prompt examples, token filtering, and step-by-step extraction.
+
+## Testing strategy
+
+Validation was done with a mix of automated and manual checks:
+
+- input validation tests for missing files, empty prompts, and malformed JSON
+- fixture-based checks for tokenizer and merge loading
+- command-line execution tests through the provided test suite
+- output inspection to confirm the generated file is valid JSON and matches the expected structure
+
+## Example usage
+
+```bash
+uv run python -m src
+```
+
+```bash
+uv run python -m src \
+  --functions_definition data/input/functions_definition.json \
+  --input data/input/function_calling_tests.json \
+  --output data/output/function_calls.json
+```
+
+Example output shape:
+
+```json
+[
+  {
+    "name": "[function name]",
+    "description": "[function description]",
+    "prompt": "[original prompt]",
+    "parameters": {
+      "[parameter name]": "[parameter value]"
+    }
+  }
+]
+```
+
+## Resources
+
+- intro to an llm: [video](https://youtu.be/zjkBMFhNj_g?si=5V11WJb4f-NG20Wq)
+- make chatgpt from scratch: [video](https://youtu.be/kCc8FmEb1nY?si=9txE2MBTplbo2Vo-)
+- make gpt tokenizer: [video](https://youtu.be/zduSFxRajkE?si=XM0qIT7RGAf72iy2)
+
+### AI usage
+
+AI was used to help draft and organize this README, summarize the implementation into the required sections, and polish the
+wording for clarity.
+additionally AI was used for research and minimal debugging
+

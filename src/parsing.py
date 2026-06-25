@@ -21,10 +21,10 @@ class RawInputs(BaseModel):
         """validate input parsed
 
         Returns:
-            return validated object
+            valid rawinput object
 
         Raises:
-            ValueError: when an invlaid field is found
+            ValueError: when an invalid field is found
         """
         valid_keys = ["name", "description", "parameters", "returns"]
         valid_types = ["string", "number", "integer", "boolean"]

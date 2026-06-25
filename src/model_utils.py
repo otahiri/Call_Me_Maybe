@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Any
 
 
-def set_module(module_sign: str) -> Small_LLM_Model:
+def set_module(model_sign: str) -> Small_LLM_Model:
     """set the model to the chosen one
 
     Args:
@@ -16,9 +16,9 @@ def set_module(module_sign: str) -> Small_LLM_Model:
         return the model generated
 
     Raises:
-        ValueError: raise a value error is the sign is not supported
+        ValueError: raised when the model_sign is not a valid sign
     """
-    match module_sign:
+    match model_sign:
         case "base":
             return Small_LLM_Model()
         case "coder":
@@ -30,16 +30,15 @@ def set_module(module_sign: str) -> Small_LLM_Model:
 
 
 class ModelInterface(BaseModel):
-    """model interface to make it easier to talk to the mode
+    """model interface to make it easier to talk to the model
 
     Attributes:
         vocab: the vocab dictionary
         merge: the merge list of all the valid merges
-        model: the model
+        model: the small llm model
         special_chars: characters to replace to make the model
         understand better
         model_config: allow pydantic to accept custom types
-        Small_LLM_Model in this case
         translation: vocab to reversed value: key for decoding
     """
     vocab: dict = dict()

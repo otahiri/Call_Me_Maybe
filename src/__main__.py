@@ -32,7 +32,7 @@ try:
             allowed_token: allowed token of functions names
 
         Returns:
-            [TODO:return]
+            Func object containing  the name and the prompt
         """
         func: Func = Func(name="dummy", prompt="dummy", parameters=dict())
         name = ""
@@ -41,11 +41,12 @@ try:
                 f'prompt: {prompt}\n' + '"answer": "')
         for _ in range(100):
             if name:
-                print(name)
+                print(f"\r{name}", end="")
                 functions = [f for f in functions if name in f]
             if len(functions) == 1:
                 name = functions[0]
-                print(f"correct functions name is {name}")
+                print(f"\r{name}", end="")
+                print(f"\rfunction name: {name}\n")
                 func = Func(name=functions[0],
                             description=func_lookup[name]['description'],
                             prompt=prompt)
@@ -72,14 +73,14 @@ try:
         """process prompts and extract function name
 
         Args:
-            model: model interface
-            func_lookup: dictionary to look up function from the name
-            prompts: prompt to be processed
+            model: mode interface
+            func_lookup: dictionary to look up function dictionary using name
+            raw_funcs: containing  the raw json formatted funcs and the prompts
 
         Returns:
-            list if Func object containing name and prompt
+            list of all Func object containing func names and prompt
         """
-        print("\n\nprocessing prompts to extract function names")
+        print("processing prompts to extract function names")
         print("===============================================\n\n")
         funcs: list[Func] = []
 
@@ -110,7 +111,7 @@ try:
 
     def extract_params(model: ModelInterface,
                        func_lookup: dict, func: Func,
-                       param_prompt: list, numeral_tokens: list):
+                       param_prompt: list, numeral_tokens: list) -> None:
         """extract parameters from a single prompt
 
         Args:
@@ -121,7 +122,7 @@ try:
             numeral_tokens: numeral tokens to use incase the parameter
             is a number or integer
         """
-        print(f"\n\nextracting parameter for function {func.name}")
+        print(f"extracting parameter for function {func.name}")
         expected_param = " ,".join(
                 [f'"{k}": "{v["type"]}"'
                  for k, v in func_lookup[func.name]['parameters'].items()]
@@ -143,15 +144,16 @@ try:
                     mask = np.full_like(logits, -np.inf)
                     for token in numeral_tokens:
                         mask[token] = logits[token]
-                    logits = mask
+                    logits = mask.tolist()
                 new_id = int(np.argmax(logits))
                 param_val += model.decode([new_id])
                 encoded.append(new_id)
                 if '"' in param_val:
                     break
                 else:
-                    print(param_val)
+                    print(f"\r{param_val}", end="")
 
+            print("\r", end="")
             clean_val: str | int | float = param_val[:param_val.find('"')]
             param_type = param_type["type"]
             print(f"{name}: {clean_val}")
@@ -172,8 +174,8 @@ try:
             funcs: function list
             func_lookup: dictionary to get function from name
         """
-        print("\n\nprocessing parameters")
-        print("============================================\n\n")
+        print("\nprocessing parameters")
+        print("============================================\n")
         param_prompt = model.encode(
                 'function name: fn_add_numbers\n'
                 "description: Add two numbers together and return their sum."
@@ -200,6 +202,7 @@ try:
             extract_params(model, func_lookup,
                            func, param_prompt, numeral_tokens)
             print(func)
+        print("============================================")
 
     def run_model() -> None:
         """run the program from using the input
@@ -209,9 +212,9 @@ try:
             ValueError: when an invalid input is detected
         """
         prompts = []
-        print("initalizing model\n\n")
+        print("initalizing model")
         model = ModelInterface()
-        print("parsing arguments\n\n")
+        print("parsing arguments")
         data: Any
         func_def: Any
         parser = argparse.ArgumentParser()
@@ -229,7 +232,7 @@ try:
                 "--output", type=str, default="data/output/function_calls.json"
                 )
         args = parser.parse_args()
-        print("parsing input files\n\n")
+        print("parsing input files")
         try:
             with open(args.functions_definition, "r") as func_file:
                 func_def = json.load(func_file)
