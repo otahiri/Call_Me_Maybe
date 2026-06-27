@@ -11,7 +11,7 @@ debug:
 	uv run python3 -m pdb src/main.py
 
 clean: 
-	rm -rf __pycache__ .mypy_cache tests/__pycache__  tests/.mypy_cache src/__pycache__  src/.mypy_cache
+	rm -rf __pycache__ .mypy_cache tests/__pycache__  tests/.mypy_cache src/__pycache__  src/.mypy_cache .pytest_cache  .python-version
 
 lint: 
 	uv run flake8 src tests

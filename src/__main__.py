@@ -100,7 +100,7 @@ try:
         allowed_token = []
         for name in func_list:
             allowed_token.extend(model.encode(name))
-        allowed_token.extend(model.encode(" end\n"))
+        allowed_token.extend(model.encode(' end\n"'))
         allowed_token = list(set(allowed_token))
         for p in raw_funcs.prompts:
             print(f'processing prompt: "{p}"')
@@ -212,8 +212,6 @@ try:
             ValueError: when an invalid input is detected
         """
         prompts = []
-        print("initalizing model")
-        model = ModelInterface()
         print("parsing arguments")
         data: Any
         func_def: Any
@@ -261,6 +259,8 @@ try:
 
         raw_funcs = RawInputs(functions=func_def, prompts=prompts)
         func_lookup = {f['name']: f for f in raw_funcs.functions}
+        print("initalizing model")
+        model = ModelInterface()
 
         funcs = process_prompts(model, func_lookup, raw_funcs)
 

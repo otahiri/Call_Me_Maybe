@@ -59,7 +59,7 @@ def test_directory_error() -> None:
     monkeypatch.setattr(
             sys, "argv",
             ["src", "--functions_definition",
-             "tests/test_permission_error.json"])
+             "tests/directory_error.json"])
     cli()
 
 
